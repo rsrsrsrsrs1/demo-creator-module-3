@@ -219,47 +219,31 @@ export function useReplayClock() {
               const resolved = resolveTarget(step)
               console.log("[v0] Executing click at step", activeIdx, "resolved:", resolved)
               
-              const targetElement = resolved.element || document.elementFromPoint(resolved.x, resolved.y)
+              let targetElement = resolved.element || document.elementFromPoint(resolved.x, resolved.y)
               
               if (targetElement) {
-                console.log("[v0] Clicking element:", targetElement, "tag:", targetElement.tagName, "demoId:", targetElement.getAttribute?.("data-demo-id"))
+                console.log("[v0] Target element:", targetElement, "tag:", targetElement.tagName, "demoId:", targetElement.getAttribute?.("data-demo-id"))
                 
-                // Dispatch multiple events to ensure compatibility with React
-                const mousedownEvent = new MouseEvent("mousedown", {
-                  bubbles: true,
-                  cancelable: true,
-                  view: window,
-                  button: step.clickType === "right" ? 2 : 0,
-                  clientX: resolved.x,
-                  clientY: resolved.y,
-                })
-                
-                const mouseupEvent = new MouseEvent("mouseup", {
-                  bubbles: true,
-                  cancelable: true,
-                  view: window,
-                  button: step.clickType === "right" ? 2 : 0,
-                  clientX: resolved.x,
-                  clientY: resolved.y,
-                })
-                
-                const clickEvent = new MouseEvent("click", {
-                  bubbles: true,
-                  cancelable: true,
-                  view: window,
-                  button: step.clickType === "right" ? 2 : 0,
-                  clientX: resolved.x,
-                  clientY: resolved.y,
-                })
-                
-                // Dispatch full click sequence
-                targetElement.dispatchEvent(mousedownEvent)
-                targetElement.dispatchEvent(mouseupEvent)
-                targetElement.dispatchEvent(clickEvent)
-                
-                console.log("[v0] Click events dispatched")
+                // Use native click() method which works better with React
+                if (typeof (targetElement as HTMLElement).click === 'function') {
+                  console.log("[v0] Calling native click() method");
+                  (targetElement as HTMLElement).click()
+                  console.log("[v0] Click executed")
+                } else {
+                  console.log("[v0] Element has no click method, dispatching events")
+                  // Fallback to event dispatching
+                  const clickEvent = new MouseEvent("click", {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    button: step.clickType === "right" ? 2 : 0,
+                    clientX: resolved.x,
+                    clientY: resolved.y,
+                  })
+                  targetElement.dispatchEvent(clickEvent)
+                }
               } else {
-                console.log("[v0] No element found to click")
+                console.log("[v0] No element found to click at coordinates:", resolved.x, resolved.y)
               }
             }
 
