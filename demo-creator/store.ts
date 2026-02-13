@@ -19,6 +19,7 @@ export const useDemoStore = create<DemoStore>((set, get) => ({
   safeMode: false,
   undoStack: [],
   redoStack: [],
+  uiResetKey: 0,
 
   // --- Internal: push current script to undo stack ---
   // (not exposed directly; called before mutations)
@@ -119,6 +120,7 @@ export const useDemoStore = create<DemoStore>((set, get) => ({
   // Replay
   setReplayState: (state) => set({ replayState: state }),
   setSpeed: (speed) => set({ replaySpeed: speed }),
+  resetUI: () => set((state) => ({ uiResetKey: state.uiResetKey + 1 })),
 
   // Safe mode
   setSafeMode: (on) => set({ safeMode: on }),

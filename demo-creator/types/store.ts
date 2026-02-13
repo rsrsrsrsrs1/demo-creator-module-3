@@ -12,6 +12,7 @@ export type DemoStoreState = {
   safeMode: boolean
   undoStack: (DemoScript | null)[]
   redoStack: (DemoScript | null)[]
+  uiResetKey: number
 }
 
 export type DemoStoreActions = {
@@ -26,6 +27,7 @@ export type DemoStoreActions = {
   setReplayState: (state: ReplayState) => void
   setSpeed: (speed: number) => void
   setSafeMode: (on: boolean) => void
+  resetUI: () => void
   undo: () => void
   redo: () => void
 }

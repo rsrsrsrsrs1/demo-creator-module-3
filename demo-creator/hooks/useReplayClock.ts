@@ -51,6 +51,7 @@ export function useReplayClock() {
   const replayState = useDemoStore((s) => s.replayState)
   const replaySpeed = useDemoStore((s) => s.replaySpeed)
   const setReplayState = useDemoStore((s) => s.setReplayState)
+  const resetUI = useDemoStore((s) => s.resetUI)
 
   const [clockState, setClockState] = useState<ClockState>({
     currentTimeMs: 0,
@@ -70,6 +71,7 @@ export function useReplayClock() {
   const prngRef = useRef<PRNG | null>(null)
   const stepRangesRef = useRef<StepTimeRange[]>([])
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const executedStepsRef = useRef<Set<number>>(new Set())
 
   // Compute step ranges when script changes
   useEffect(() => {
@@ -210,6 +212,57 @@ export function useReplayClock() {
           if (motionT >= 1) {
             prevPosRef.current = pos
 
+            // Execute the actual click on the target element (only once per step)
+            if (!executedStepsRef.current.has(activeIdx)) {
+              executedStepsRef.current.add(activeIdx)
+              
+              const resolved = resolveTarget(step)
+              console.log("[v0] Executing click at step", activeIdx, "resolved:", resolved)
+              
+              const targetElement = resolved.element || document.elementFromPoint(resolved.x, resolved.y)
+              
+              if (targetElement) {
+                console.log("[v0] Clicking element:", targetElement, "tag:", targetElement.tagName, "demoId:", targetElement.getAttribute?.("data-demo-id"))
+                
+                // Dispatch multiple events to ensure compatibility with React
+                const mousedownEvent = new MouseEvent("mousedown", {
+                  bubbles: true,
+                  cancelable: true,
+                  view: window,
+                  button: step.clickType === "right" ? 2 : 0,
+                  clientX: resolved.x,
+                  clientY: resolved.y,
+                })
+                
+                const mouseupEvent = new MouseEvent("mouseup", {
+                  bubbles: true,
+                  cancelable: true,
+                  view: window,
+                  button: step.clickType === "right" ? 2 : 0,
+                  clientX: resolved.x,
+                  clientY: resolved.y,
+                })
+                
+                const clickEvent = new MouseEvent("click", {
+                  bubbles: true,
+                  cancelable: true,
+                  view: window,
+                  button: step.clickType === "right" ? 2 : 0,
+                  clientX: resolved.x,
+                  clientY: resolved.y,
+                })
+                
+                // Dispatch full click sequence
+                targetElement.dispatchEvent(mousedownEvent)
+                targetElement.dispatchEvent(mouseupEvent)
+                targetElement.dispatchEvent(clickEvent)
+                
+                console.log("[v0] Click events dispatched")
+              } else {
+                console.log("[v0] No element found to click")
+              }
+            }
+
             // Trigger highlight FX
             if (step.fx.highlight && step.fx.highlightMs > 0) {
               setClockState((prev) => ({
@@ -270,9 +323,12 @@ export function useReplayClock() {
       prevStepIndexRef.current = -1
       prngRef.current = new PRNG(script.seed)
       prevPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      executedStepsRef.current.clear()
+      // Reset UI to initial state before replay
+      resetUI()
     }
     setReplayState("playing")
-  }, [script, replayState, setReplayState])
+  }, [script, replayState, setReplayState, resetUI])
 
   const pause = useCallback(() => {
     setReplayState("paused")
@@ -283,16 +339,21 @@ export function useReplayClock() {
     currentTimeMsRef.current = 0
     prevStepIndexRef.current = -1
     prevPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+    executedStepsRef.current.clear()
     if (script) {
       prngRef.current = new PRNG(script.seed)
     }
+    // Reset UI to initial state before replay
+    resetUI()
     setReplayState("playing")
-  }, [script, setReplayState])
+  }, [script, setReplayState, resetUI])
 
   const seek = useCallback(
     (timeMs: number) => {
       currentTimeMsRef.current = clamp(timeMs, 0, totalDuration)
       prevStepIndexRef.current = -1 // force re-resolve
+      // Clear executed steps when seeking to allow re-execution
+      executedStepsRef.current.clear()
     },
     [totalDuration]
   )
