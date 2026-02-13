@@ -70,6 +70,7 @@ export function useReplayClock() {
   const prngRef = useRef<PRNG | null>(null)
   const stepRangesRef = useRef<StepTimeRange[]>([])
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const executedStepsRef = useRef<Set<number>>(new Set())
 
   // Compute step ranges when script changes
   useEffect(() => {
@@ -210,6 +211,45 @@ export function useReplayClock() {
           if (motionT >= 1) {
             prevPosRef.current = pos
 
+            // Execute the actual click on the target element (only once per step)
+            if (!executedStepsRef.current.has(activeIdx)) {
+              executedStepsRef.current.add(activeIdx)
+              
+              const resolved = resolveTarget(step)
+              if (resolved.element) {
+                // Create and dispatch click event
+                const clickEvent = new MouseEvent(
+                  step.clickType === "double" ? "dblclick" : "click",
+                  {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    button: step.clickType === "right" ? 2 : 0,
+                    clientX: resolved.x,
+                    clientY: resolved.y,
+                  }
+                )
+                resolved.element.dispatchEvent(clickEvent)
+              } else {
+                // Fallback: dispatch at coordinates
+                const elementAtPoint = document.elementFromPoint(resolved.x, resolved.y)
+                if (elementAtPoint) {
+                  const clickEvent = new MouseEvent(
+                    step.clickType === "double" ? "dblclick" : "click",
+                    {
+                      bubbles: true,
+                      cancelable: true,
+                      view: window,
+                      button: step.clickType === "right" ? 2 : 0,
+                      clientX: resolved.x,
+                      clientY: resolved.y,
+                    }
+                  )
+                  elementAtPoint.dispatchEvent(clickEvent)
+                }
+              }
+            }
+
             // Trigger highlight FX
             if (step.fx.highlight && step.fx.highlightMs > 0) {
               setClockState((prev) => ({
@@ -270,6 +310,7 @@ export function useReplayClock() {
       prevStepIndexRef.current = -1
       prngRef.current = new PRNG(script.seed)
       prevPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      executedStepsRef.current.clear()
     }
     setReplayState("playing")
   }, [script, replayState, setReplayState])
@@ -283,6 +324,7 @@ export function useReplayClock() {
     currentTimeMsRef.current = 0
     prevStepIndexRef.current = -1
     prevPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+    executedStepsRef.current.clear()
     if (script) {
       prngRef.current = new PRNG(script.seed)
     }
@@ -293,6 +335,8 @@ export function useReplayClock() {
     (timeMs: number) => {
       currentTimeMsRef.current = clamp(timeMs, 0, totalDuration)
       prevStepIndexRef.current = -1 // force re-resolve
+      // Clear executed steps when seeking to allow re-execution
+      executedStepsRef.current.clear()
     },
     [totalDuration]
   )
