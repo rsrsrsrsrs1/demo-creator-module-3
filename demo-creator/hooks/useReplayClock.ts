@@ -51,6 +51,7 @@ export function useReplayClock() {
   const replayState = useDemoStore((s) => s.replayState)
   const replaySpeed = useDemoStore((s) => s.replaySpeed)
   const setReplayState = useDemoStore((s) => s.setReplayState)
+  const resetUI = useDemoStore((s) => s.resetUI)
 
   const [clockState, setClockState] = useState<ClockState>({
     currentTimeMs: 0,
@@ -323,9 +324,11 @@ export function useReplayClock() {
       prngRef.current = new PRNG(script.seed)
       prevPosRef.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       executedStepsRef.current.clear()
+      // Reset UI to initial state before replay
+      resetUI()
     }
     setReplayState("playing")
-  }, [script, replayState, setReplayState])
+  }, [script, replayState, setReplayState, resetUI])
 
   const pause = useCallback(() => {
     setReplayState("paused")
@@ -340,8 +343,10 @@ export function useReplayClock() {
     if (script) {
       prngRef.current = new PRNG(script.seed)
     }
+    // Reset UI to initial state before replay
+    resetUI()
     setReplayState("playing")
-  }, [script, setReplayState])
+  }, [script, setReplayState, resetUI])
 
   const seek = useCallback(
     (timeMs: number) => {
