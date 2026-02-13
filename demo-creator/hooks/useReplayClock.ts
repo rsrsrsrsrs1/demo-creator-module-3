@@ -216,37 +216,49 @@ export function useReplayClock() {
               executedStepsRef.current.add(activeIdx)
               
               const resolved = resolveTarget(step)
-              if (resolved.element) {
-                // Create and dispatch click event
-                const clickEvent = new MouseEvent(
-                  step.clickType === "double" ? "dblclick" : "click",
-                  {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window,
-                    button: step.clickType === "right" ? 2 : 0,
-                    clientX: resolved.x,
-                    clientY: resolved.y,
-                  }
-                )
-                resolved.element.dispatchEvent(clickEvent)
+              console.log("[v0] Executing click at step", activeIdx, "resolved:", resolved)
+              
+              const targetElement = resolved.element || document.elementFromPoint(resolved.x, resolved.y)
+              
+              if (targetElement) {
+                console.log("[v0] Clicking element:", targetElement, "tag:", targetElement.tagName, "demoId:", targetElement.getAttribute?.("data-demo-id"))
+                
+                // Dispatch multiple events to ensure compatibility with React
+                const mousedownEvent = new MouseEvent("mousedown", {
+                  bubbles: true,
+                  cancelable: true,
+                  view: window,
+                  button: step.clickType === "right" ? 2 : 0,
+                  clientX: resolved.x,
+                  clientY: resolved.y,
+                })
+                
+                const mouseupEvent = new MouseEvent("mouseup", {
+                  bubbles: true,
+                  cancelable: true,
+                  view: window,
+                  button: step.clickType === "right" ? 2 : 0,
+                  clientX: resolved.x,
+                  clientY: resolved.y,
+                })
+                
+                const clickEvent = new MouseEvent("click", {
+                  bubbles: true,
+                  cancelable: true,
+                  view: window,
+                  button: step.clickType === "right" ? 2 : 0,
+                  clientX: resolved.x,
+                  clientY: resolved.y,
+                })
+                
+                // Dispatch full click sequence
+                targetElement.dispatchEvent(mousedownEvent)
+                targetElement.dispatchEvent(mouseupEvent)
+                targetElement.dispatchEvent(clickEvent)
+                
+                console.log("[v0] Click events dispatched")
               } else {
-                // Fallback: dispatch at coordinates
-                const elementAtPoint = document.elementFromPoint(resolved.x, resolved.y)
-                if (elementAtPoint) {
-                  const clickEvent = new MouseEvent(
-                    step.clickType === "double" ? "dblclick" : "click",
-                    {
-                      bubbles: true,
-                      cancelable: true,
-                      view: window,
-                      button: step.clickType === "right" ? 2 : 0,
-                      clientX: resolved.x,
-                      clientY: resolved.y,
-                    }
-                  )
-                  elementAtPoint.dispatchEvent(clickEvent)
-                }
+                console.log("[v0] No element found to click")
               }
             }
 
